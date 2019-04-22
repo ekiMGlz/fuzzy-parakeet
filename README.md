@@ -1,2 +1,2 @@
-# fuzzy-parakeet
+# Simplex Method
 Linear programming first assignment
