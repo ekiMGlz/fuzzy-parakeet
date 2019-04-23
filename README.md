@@ -1,2 +1,3 @@
-# Simplex Method
-Linear programming first assignment
+# Linear Programming
+## First Assignment
+Simplex method
