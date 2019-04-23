@@ -8,27 +8,42 @@
 %%%                                 Runtime                                  %%%
 %%%                                                                          %%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function[] = firstassignment()
-    A = [-1, 1, 1, 0, 0;
-          1, 0, 0, 1, 0;
-          0, 1, 0, 0, 1];
 
-    b = [1;
-         3;
-         2];
+% First example (Matousek, pg 57)
+% A = [-1, 1, 1, 0, 0;
+%       1, 0, 0, 1, 0;
+%       0, 1, 0, 0, 1];
+% 
+% b = [1;
+%      3;
+%      2];
+% 
+% c = [1;
+%      1;
+%      0;     
+%      0;
+%      0];
+% 
+% sbasis = [3, 4, 5];
+% sbfs = [0, 0, 1, 3, 2];
 
-    c = [1;
-         1;
-         0;     
-         0;
-         0];
+% Unbounded Example (Matousek, pg 61)
+A = [1, -1, 1, 0;
+      -1, 1, 0, 1];
 
-    sbasis = [3, 4, 5];
+b = [1;
+     2];
 
-    sbfs = [0, 0, 1, 3, 2];
+c = [1;
+     0;
+     0;     
+     0];
 
-    phaseTwo(A, b, c, sbasis, sbfs);
-end
+sbasis = [3, 4];
+sbfs = [0, 0, 1, 2];
+
+
+[bound, obasis, obfs oval] = phaseTwo(A, b, c, sbasis, sbfs);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%                                                                          %%%
@@ -84,16 +99,44 @@ function[bound, obasis, obfs, oval] = phaseTwo(A, b, c, sbasis, sbfs)
     [ub, op, deg, candidates] = tableauStatus(T);
     
     % Check if the problem is unbounded
-    % If it is, obasis and obfs will be the witness
     if ub
         bound = 0;
-        witness = null_vars(candidates(end, 1)-1);
-        obasis = [basic_vars, witness];
-        sbfs(witness) = inf;
-        obfs = sbfs;
-        oval = inf;
+        obasis = [];
+        obfs = [];
+        oval = -inf;
         return
-    endif
+    end
+    
+    while ~op
+        
+        % TODO: add steepest edge step if non degenerate bfs
+        [T, enter, leave] = BlandsRuleStep(T, candidates);
+        aux = null_vars(enter-1);
+        
+        null_vars(enter-1) = basic_vars(leave);
+        basic_vars(leave) = aux;
+        % TODO: make a pretty print for tableaus
+        T
+        basic_vars
+        null_vars
+        [ub, op, deg, candidates] = tableauStatus(T);
+        
+        if ub
+            bound = 0;
+            obasis = [];
+            obfs = [];
+            oval = -inf;
+            return
+        end
+    end
+    
+    bound = 1;
+    obasis = sort(basic_vars);
+    obfs = zeros(1, n);
+    for i = 1:m
+        obfs(basic_vars(i)) = T(i, 1);
+    end
+    oval = T(m+1, 1);
     
 end
 
@@ -113,8 +156,7 @@ function [unbounded, optimal, degenerate, candidates] = tableauStatus(T)
     % degenerate - 1 if degenerate bfs, else 0
     % candidates - (k)x(3) matrix, where k is the number of possible
     % enetring varialbles for the simplex. Each row contains, in order, the
-    % index of the entering variable, the index of the leaving variable and
-    % the new value of the entering variable
+    % index of the entering variable and the index of the leaving variable 
     [m, n] = size(T);
     unbounded = 0;
     optimal = 1;
@@ -135,7 +177,7 @@ function [unbounded, optimal, degenerate, candidates] = tableauStatus(T)
                 end
             end
             
-            candidates = [candidates; j, min_index, min];
+            candidates = [candidates; j, min_index];
             
             if min_index == -1
                 unbounded = 1;
@@ -158,18 +200,35 @@ function [T] = nextTableau(T, col, row)
     % Input:
     % T - (m)x(n) matrix with the previous tableau, arranged as stated in
     %     phaseTwo
-    % col - index of the entering variable, must be a value in [2, n]
-    % row - index of the leaving variable, value in [1, m-1]
+    % col - index of the row representing the entering variable, must be a value in [2, n]
+    % row - index of the row representing the leaving variable, value in [1, m-1]
     % Output:
     % T - The next tableau
     % 
     
     [m, n] = size(T);
-    
+    % Save the previous column
     aux_col = T(:, col);
-    T(:, col) = zeros(m, 1);
-    T(row, col) = 1;
     
+    %Replace the entering column with [0, 0, ..., -1, 0, ..., 0] (-1 in leaving row)
+    T(:, col) = zeros(m, 1);
+    T(row, col) = -1;
+    
+    %Divide the leaving row by the coeficient of the entering variable.
+    T(row, :) = -T(row, :)/aux_col(row);
+    for i = 1:m
+        if i ~= row
+            T(i, :) = T(i, :) + aux_col(i)*T(row, :);
+        end
+    end
+    
+end
+
+function[T, enter, leave] = BlandsRuleStep(T, candidates)
+    % TODO: check if valid, otherwise check for min index (might need more args)
+    enter = candidates(1, 1);
+    leave = candidates(1, 2);
+    T = nextTableau(T, enter, leave);
 end
 
 
