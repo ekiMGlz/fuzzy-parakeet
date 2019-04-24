@@ -43,27 +43,86 @@
 % sbfs = [0, 0, 1, 2];
 
 % Degenerate Example (Matousek, pg 62)
-A = [-1, 1, 1, 0;
-      1, 0, 0, 1];
+%A = [-1, 1, 1, 0;
+%      1, 0, 0, 1];
 
-b = [0;
+%b = [0;
+%     2];
+
+%c = [0;
+%     1;
+%     0;     
+%     0];
+
+%sbasis = [3, 4];
+%sbfs = [0, 0, 0, 2];
+
+% No bfs example (Matousek, pg 64)
+A = [1, 3, 1;
+      0, 2, 1];
+
+b = [4;
      2];
 
-c = [0;
-     1;
-     0;     
+c = [1;
+     2;
      0];
 
-sbasis = [3, 4];
-sbfs = [0, 0, 0, 2];
 
-[bound, obasis, obfs oval] = phaseTwo(A, b, c, sbasis, sbfs);
+%[bound, obasis, obfs oval] = phaseTwo(A, b, c, sbasis, sbfs);
+
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%                                                                          %%%
 %%%                              Main Functions                              %%%
 %%%                                                                          %%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+function[nvac, basis, bfs] = phaseOne(A, b, c)
+    % maximise c^T x
+    % subject to Ax = b, x >= 0, b >=0
+    %
+    % Input:
+    % A mxn matrix with m <= n and rank of A is m
+    % b column vector with m rows
+    % c column vector with n rows
+    %
+    % Output:
+    % nvac = 0 if the feasible set is empty
+    % nvac = 1 if the feasible set is non-empty
+    % basis = a vector of size m of indices of column vectors for a feasible basis for
+    % the problem if the feasible set is non-empty
+    % bfs = a vector of size n of the basic feasible solution corresponding to this
+    % basis (if the feasible set is non-empty)
+    
+    % Save the size of A for future use
+    [m, n] = size(A);
+    
+    % Create a new auxiliary linear program
+    % max sum -z_i
+    % subject to Dx=b
+    % With D = (A | I_m) and introducing new m new variables zi
+    D = [A, eye(m)];
+    sbasis = (n+1):(n+m);
+    sbfs = [zeros(1, n), transpose(b)];
+    z = [zeros(n, 1); -ones(m, 1)];
+    
+    % Solve the auxiliary linear program
+    [bound, obasis, obfs, oval] = phaseTwo(D, b, z, sbasis, sbfs);
+    
+    % Check if the original probleam was feasible
+    if oval == 0
+        basis = setdiff(obasis, (m+1):(m+n));
+        bfs = obfs(1:n);
+        nvac = 1;
+    else
+        basis = [];
+        bfs = [];
+        nvac = 0;
+    end
+    
+end
 
 function[bound, obasis, obfs, oval] = phaseTwo(A, b, c, sbasis, sbfs)
     % maximise c^T x
@@ -153,6 +212,57 @@ function[bound, obasis, obfs, oval] = phaseTwo(A, b, c, sbasis, sbfs)
     end
     oval = T(m+1, 1);
     
+end
+
+function[status, obasis, obfs, oval] = bothPhases(A, b, c)
+    % maximise c^T x
+    % subject to Ax = b, x >= 0, b >=0
+    %
+    % Input:
+    % A mxn matrix with m <= n and rank of A is m
+    % b column vector with m rows
+    % c column vector with n rows
+    %
+    % Output:
+    % status = -1 if the feasible set is empty
+    % status = 0 if the feasible set is non-empty but the problem is unbounded 
+    %          (there is no optimal solution)
+    % status = 1 if the problem is bounded (there is an optimal solution)
+    % obasis = a vector of size m of indices of an optimal feasible basis for the 
+    %          problem if the feasible set is non-empty and the problem is bounded (in terms of a 
+    %          set of indices of column vectors)
+    % obfs = a vector of size n which is the optimal basic feasible solution 
+    %        corresponding to this optimal basis if the feasible set is non-empty and the problem is bounded
+    % oval = the objective value of this optimal basic feasible solution (if the 
+    %        feasible set is non-empty and the problem is bounded)
+    
+    % Obtain a bfs for the problem
+    [nvac, sbasis, sbfs] = phaseOne(A, b, c);
+    
+    % Check feasibility
+    if ~nvac
+        status = -1;
+        obasis = [];
+        obfs = 0;
+        oval = 0;
+        return
+    end
+    
+    % If feasible, solve the problem
+    [bound, obasis, obfs, oval] = phaseTwo(A, b, c, sbasis, sbfs);
+    
+    % Check bound
+    if ~bound
+        status = 0;
+        obasis = [];
+        obasis = [];
+        obfs = 0;
+        oval = 0;
+        return
+    end
+    
+    % Problem solved
+    status = 1;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -265,10 +375,10 @@ function[T, basic_vars, null_vars] = BlandStep(T, basic_vars, null_vars, candida
     % to the index of each variable, the minimum index must be manually found
     enter = candidates(1, 1);
     leave = candidates(1, 2);
-    min = basic_vars(enter-1);
+    min = null_vars(enter-1);
     for r = transpose(candidates(2:end, :))
-        if basic_vars(r(1)-1) < min
-            min = basic_vars(r(1)-1);
+        if null_vars(r(1)-1) < min
+            min = null_vars(r(1)-1);
             enter = r(1);
             leave = r(2);
         end
@@ -284,6 +394,7 @@ function[T, basic_vars, null_vars] = BlandStep(T, basic_vars, null_vars, candida
 end
 
 function[] = printTableau(T, basic_vars, null_vars)
+    
     disp(["x\t   ", num2str(null_vars)])
     
     [m, n] = size(T);
