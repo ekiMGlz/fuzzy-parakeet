@@ -1,4 +1,4 @@
-% First Assignment for the Linear Programming File
+% First Assignment for the Linear Programming Class
 % Authors:
 % Alejandro Rodriguez Orozco - 
 % Miguel Gonzalez Borja - 155766
@@ -70,7 +70,7 @@ c = [1;
 
 
 %[bound, obasis, obfs oval] = phaseTwo(A, b, c, sbasis, sbfs);
-
+[status, obasis, obfs, oval] = bothPhases(A, b, c)
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
