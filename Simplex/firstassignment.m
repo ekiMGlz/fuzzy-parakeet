@@ -9,6 +9,11 @@
 %%%                                                                          %%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+% Global verbose setting, set to 1 to print additional info during each
+% funciton, set to 0 to ommit
+global verbose
+verbose = 0;
+
 % First example (Matousek, pg 57)
 % A = [-1, 1, 1, 0, 0;
 %       1, 0, 0, 1, 0;
@@ -70,7 +75,7 @@ c = [1;
 
 
 %[bound, obasis, obfs oval] = phaseTwo(A, b, c, sbasis, sbfs);
-[status, obasis, obfs, oval] = bothPhases(A, b, c)
+[status, obasis, obfs, oval] = bothPhases(A, b, c);
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -96,6 +101,8 @@ function[nvac, basis, bfs] = phaseOne(A, b, c)
     % bfs = a vector of size n of the basic feasible solution corresponding to this
     % basis (if the feasible set is non-empty)
     
+    global verbose
+    
     % Save the size of A for future use
     [m, n] = size(A);
     
@@ -108,8 +115,16 @@ function[nvac, basis, bfs] = phaseOne(A, b, c)
     sbfs = [zeros(1, n), transpose(b)];
     z = [zeros(n, 1); -ones(m, 1)];
     
+    if verbose
+        fprintf("Creating auxiliary linear program...\n")
+    end
+    
     % Solve the auxiliary linear program
     [bound, obasis, obfs, oval] = phaseTwo(D, b, z, sbasis, sbfs);
+    
+    if verbose
+        fprintf("Auxiliary linear program solved, checking feasibility...\n")
+    end
     
     % Check if the original probleam was feasible
     if oval == 0
@@ -143,6 +158,8 @@ function[bound, obasis, obfs, oval] = phaseTwo(A, b, c, sbasis, sbfs)
     % obfs = a vector of size n which is the optimal basic feasible solution corresponding to this optimal basis if the problem is bounded
     % oval = the objective value of this optimal basic feasible solution (if the problem is bounded)
 
+    global verbose
+    
     % Save the size of A for future use
     [m, n] = size(A);
 
@@ -170,12 +187,17 @@ function[bound, obasis, obfs, oval] = phaseTwo(A, b, c, sbasis, sbfs)
     
     % Check the tableau
     [bound, optimal, degenerate, candidates] = tableauStatus(T);
-    % TODO: pretty print tableau
-    printTableau(T, basic_vars, null_vars);
-    candidates
+    
+    if verbose
+        fprintf("Initial Tableau:\n")
+        printTableau(T, basic_vars, null_vars);
+    end
     
     % If the tableau shows a possible unbounded soln, exit
     if ~bound
+        if verbose
+            fprintf("Unbounded solution detected...\n")
+        end
         obasis = [];
         obfs = [];
         oval = -inf;
@@ -189,19 +211,28 @@ function[bound, obasis, obfs, oval] = phaseTwo(A, b, c, sbasis, sbfs)
         % Take a step using Bland's Rule
         [T, basic_vars, null_vars] = BlandStep(T, basic_vars, null_vars, candidates);
         
+        if verbose
+            fprintf("New Tableau:\n")
+            printTableau(T, basic_vars, null_vars);
+        end
+        
         % Check the tableau
         [bound, optimal, degenerate, candidates] = tableauStatus(T);
-        % TODO: make a pretty print for tableaus
-        printTableau(T, basic_vars, null_vars);
-        candidates
         
         % If the tableau shows a possible unbounded soln, exit
         if ~bound
+            if verbose
+                fprintf("Unbounded solution detected...\n")
+            end
             obasis = [];
             obfs = [];
             oval = -inf;
             return
         end
+    end
+    
+    if verbose
+        fprintf("Optimal solution found...\n")
     end
     
     % Get the correct values for the optimal basis, bfs and value
@@ -236,11 +267,21 @@ function[status, obasis, obfs, oval] = bothPhases(A, b, c)
     % oval = the objective value of this optimal basic feasible solution (if the 
     %        feasible set is non-empty and the problem is bounded)
     
+    global verbose
+    
+    if verbose
+        fprintf("Verbose Mode On\n\n")
+        fprintf("Obtaining starting basic feasible soln...\n")
+    end
+    
     % Obtain a bfs for the problem
     [nvac, sbasis, sbfs] = phaseOne(A, b, c);
     
     % Check feasibility
     if ~nvac
+        if verbose
+            fprintf("Feasible set is empty, exiting with status -1\n")
+        end
         status = -1;
         obasis = [];
         obfs = 0;
@@ -248,11 +289,21 @@ function[status, obasis, obfs, oval] = bothPhases(A, b, c)
         return
     end
     
+    if verbose
+        fprintf("Starting bfs found:\n")
+        sbfs
+        sbasis
+        fprintf("Moving on to Phase Two...\n")
+    end
+    
     % If feasible, solve the problem
     [bound, obasis, obfs, oval] = phaseTwo(A, b, c, sbasis, sbfs);
     
     % Check bound
     if ~bound
+        if verbose
+            fprintf("Unbounded problem, exiting with status 0\n")
+        end
         status = 0;
         obasis = [];
         obasis = [];
@@ -261,6 +312,9 @@ function[status, obasis, obfs, oval] = bothPhases(A, b, c)
         return
     end
     
+    if verbose
+        fprintf("Solution found, exiting with status 1\n")
+    end
     % Problem solved
     status = 1;
 end
@@ -370,6 +424,8 @@ function[T, basic_vars, null_vars] = BlandStep(T, basic_vars, null_vars, candida
     %   basic_vars - vector with the index for the basic variables
     %   null_vars - vector with the index for the non basic variables
 
+    global verbose
+    
     % Decide on the entering var
     % Since the columns of the tableau are not necesarilly sorted with respect 
     % to the index of each variable, the minimum index must be manually found
@@ -387,6 +443,12 @@ function[T, basic_vars, null_vars] = BlandStep(T, basic_vars, null_vars, candida
     % Generate the next tableau
     T = nextTableau(T, enter, leave);
     
+    if verbose
+        fprintf("Pivot using Bland's Rule:\n")
+        fprintf("\tEntering Variable: x_%d\n", null_vars(enter-1))
+        fprintf("\tLeaving Variable: x_%d\n", basic_vars(leave))
+    end
+    
     % Swap the entering and leaving variables in basic_vars and null_vars
     aux = null_vars(enter-1);
     null_vars(enter-1) = basic_vars(leave);
@@ -395,11 +457,12 @@ end
 
 function[] = printTableau(T, basic_vars, null_vars)
     
-    disp(["x\t   ", num2str(null_vars)])
-    
+    S = "      \tp\t\t" + sprintf("x_%d\t\t", null_vars) + "\n";
     [m, n] = size(T);
     for i = 1:m-1
-        disp([num2str(basic_vars(i)), "=\t", num2str(T(i, :))])
+        S = S + sprintf("x_%d =\t", basic_vars(i)) + sprintf("%0.2f\t", T(i, :)) + "\n";
     end
-    disp(["z=\t", num2str(T(m, :))])
+    
+    S = S + "z   =\t" + sprintf("%0.2f\t", T(end, :)) + "\n";
+    fprintf(S)
 end
