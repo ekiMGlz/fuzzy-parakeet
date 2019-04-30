@@ -12,7 +12,7 @@
 % Global verbose setting, set to 1 to print additional info during each
 % funciton, set to 0 to ommit
 global verbose
-verbose = 0;
+verbose = 1;
 
 % First example (Matousek, pg 57)
 % A = [-1, 1, 1, 0, 0;
@@ -64,7 +64,7 @@ verbose = 0;
 
 % No bfs example (Matousek, pg 64)
 A = [1, 3, 1;
-      0, 2, 1];
+     0, 2, 1];
 
 b = [4;
      2];
@@ -73,8 +73,13 @@ c = [1;
      2;
      0];
 
+% Ejemplo Andrea
+%A = [-1, -1];
+%b = [0];
+%c = [1; 
+%     0];
 
-%[bound, obasis, obfs oval] = phaseTwo(A, b, c, sbasis, sbfs);
+% [bound, obasis, obfs oval] = phaseTwo(A, b, c, sbasis, sbfs);
 [status, obasis, obfs, oval] = bothPhases(A, b, c);
 
 
@@ -129,6 +134,20 @@ function[nvac, basis, bfs] = phaseOne(A, b, c)
     % Check if the original probleam was feasible
     if oval == 0
         basis = setdiff(obasis, (m+1):(m+n));
+        
+        k = length(basis);
+        % Check the new basis to make sure it has m elements
+        if k<m
+            if verbose
+                fprintf("Auxiliary basis contains correction variables, adjusting initial basis...\n");
+            end
+            
+            % Get non basic variables and add enough of them to our new
+            % basis to get m variables
+            null_vars = setdiff(1:m, basis);
+            basis = sort([basis, null_vars(1:(m-k))]);
+        end
+        
         bfs = obfs(1:n);
         nvac = 1;
     else
@@ -200,7 +219,7 @@ function[bound, obasis, obfs, oval] = phaseTwo(A, b, c, sbasis, sbfs)
         end
         obasis = [];
         obfs = [];
-        oval = -inf;
+        oval = inf;
         return
     end
     
@@ -226,7 +245,7 @@ function[bound, obasis, obfs, oval] = phaseTwo(A, b, c, sbasis, sbfs)
             end
             obasis = [];
             obfs = [];
-            oval = -inf;
+            oval = inf;
             return
         end
     end
@@ -284,8 +303,8 @@ function[status, obasis, obfs, oval] = bothPhases(A, b, c)
         end
         status = -1;
         obasis = [];
-        obfs = 0;
-        oval = 0;
+        obfs = [];
+        oval = inf;
         return
     end
     
@@ -306,9 +325,8 @@ function[status, obasis, obfs, oval] = bothPhases(A, b, c)
         end
         status = 0;
         obasis = [];
-        obasis = [];
-        obfs = 0;
-        oval = 0;
+        obfs = [];
+        oval = inf;
         return
     end
     
