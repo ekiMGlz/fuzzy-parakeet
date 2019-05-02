@@ -59,10 +59,17 @@ function[nvac, basis, bfs] = phaseOne(A, b, c)
                 fprintf("Auxiliary basis contains correction variables, adjusting initial basis...\n");
             end
             
-            % Get non basic variables and add enough of them to our new
-            % basis to get m variables
+            % Increase the rank of the basis until you get rank m
             null_vars = setdiff(1:m, basis);
-            basis = sort([basis, null_vars(1:(m-k))]);
+            
+            i = 1;
+            while k < m
+                if rank(A(:, [basis, null_vars(i)]))
+                    basis = [basis, null_vars(i)];
+                    k = k + 1;
+                end
+                i = i + 1;
+            end
         end
         
         bfs = obfs(1:n);
