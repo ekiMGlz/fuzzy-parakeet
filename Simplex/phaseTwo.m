@@ -1,6 +1,7 @@
 % Simplex Phase Two function
 % Authors:
-% Alejandro Rodriguez Orozco - 
+% Alejandro Rodriguez Orozco - 158192
+% Margarita Khvan - 184888
 % Miguel Gonzalez Borja - 155766
 
 function[bound, obasis, obfs, oval] = phaseTwo(A, b, c, sbasis, sbfs)

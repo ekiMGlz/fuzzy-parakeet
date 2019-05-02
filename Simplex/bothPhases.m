@@ -1,6 +1,7 @@
 % Full Simplex function
 % Authors:
-% Alejandro Rodriguez Orozco - 
+% Alejandro Rodriguez Orozco - 158192
+% Margarita Khvan - 184888
 % Miguel Gonzalez Borja - 155766
 
 function[status, obasis, obfs, oval] = bothPhases(A, b, c)
